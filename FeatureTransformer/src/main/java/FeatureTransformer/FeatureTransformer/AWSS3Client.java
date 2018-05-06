@@ -28,7 +28,7 @@ import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 //import com.elliemae.core.model.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-//import org.xerial.snappy.SnappyInputStream;
+import org.xerial.snappy.SnappyInputStream;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -87,29 +87,87 @@ public class AWSS3Client {
 		return s3json;
 	
 	}
-	public String getJsonFromS3Snappy(String bucket_name, String s3Object_key) throws IOException {
-		System.out.println("getJsonFromS3Snappy");
-
+	
+	public String readS3ObjectUsingByteArray(String bucketName, String key) throws IOException {
 		final AmazonS3 s3 = AmazonS3ClientBuilder.defaultClient();
-		S3Object s3object = s3.getObject(new GetObjectRequest(bucket_name, s3Object_key));
+		S3Object s3object = s3.getObject(new GetObjectRequest(bucketName, key));
 
 		String contentType = s3object.getObjectMetadata().getContentType();
 		long contentLen = s3object.getObjectMetadata().getContentLength();
  
+
+	    InputStream stream = s3object.getObjectContent();
+	    byte[] content = new byte[1024];
+
+	    //BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(outputFileName));
+	    int totalSize = 0;
+	    int bytesRead;
+	    StringBuilder sb = new StringBuilder((int)contentLen);
+	    while ((bytesRead = stream.read(content)) != -1) {
+	      System.out.println(String.format("%d bytes read from stream", bytesRead));
+	      //outputStream.write(content, 0, bytesRead);
+	      totalSize += bytesRead;
+	      
+	      
+	      String str = new String(content, 0, bytesRead);
+	      sb.append(str);
+	      
+	    }
+	    System.out.println("Total Size of file in bytes = "+totalSize);
+	    // close resource even during exception
+	    //outputStream.close();
+	    
+	    return sb.toString();
+	    
+	  }
+
+
+	
+	
+	public String getJsonFromS3Snappy(String bucket_name, String s3Object_key) throws IOException {
+		System.out.printf("getJsonFromS3Snappy, bucket_name=%s, s3Object_key=%s\n ", bucket_name, s3Object_key);
+		final AmazonS3 s3 = AmazonS3ClientBuilder.defaultClient();
+
+		/* 
+		// The following code worked !!!
+		 
+		S3Object s3object = s3.getObject(new GetObjectRequest(bucket_name, s3Object_key));
+
+		String contentType = s3object.getObjectMetadata().getContentType();
+		long contentLen = s3object.getObjectMetadata().getContentLength();
+		System.out.printf("conent length=%d\n", contentLen);
+ 
 		S3ObjectInputStream s3InputStream = s3object.getObjectContent();
-		// Process the objectData stream.
-		byte[] read_buf = new byte[(int) contentLen];
-
-		s3InputStream.read(read_buf);
-
-		byte[]  uncompressed = Snappy.uncompress(read_buf);
+		SnappyInputStream sin = new SnappyInputStream(s3InputStream);
 		
 		
-		String s3json = new String(uncompressed);
+		
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();				
+		byte[] buffer = new byte[1024];
+		
 		s3InputStream.close();
+		int read = 0;
+		while ((read = sin.read(buffer, 0, buffer.length)) > 0) {
+			baos.write(buffer, 0, read);
+		}		
+		baos.flush();		
+		return  new String(baos.toByteArray(), "UTF-8"); 
+		*/
 		
-		return s3json;
+		//return  new String(baos.toByteArray()); 
 
+		S3Object s3object = s3.getObject(new GetObjectRequest(bucket_name, s3Object_key));
+
+		String contentType = s3object.getObjectMetadata().getContentType();
+		long contentLen = s3object.getObjectMetadata().getContentLength();
+		System.out.printf("conent length=%d\n", contentLen);
+ 
+		S3ObjectInputStream s3InputStream = s3object.getObjectContent();
+				
+		
+        byte[] output = IOUtils.toByteArray(s3InputStream);
+        byte [] uncomressed = Snappy.uncompress(output);
+        return new String(uncomressed);
 		
 		
 		
@@ -176,7 +234,7 @@ public class AWSS3Client {
 		output.clear();
 
 	    final int actualUncompressedLength = Snappy.uncompress(input, output);
-	    System.out.printf("actual uncompressed length = %d", actualUncompressedLength);
+	    System.out.printf("actual uncompressed length = %d\n", actualUncompressedLength);
 	    assert(uncompressedLength == actualUncompressedLength);
 
 	    byte uncompressed[] = new byte[actualUncompressedLength];
@@ -184,9 +242,10 @@ public class AWSS3Client {
 	    String result = new String(uncompressed, "UTF-8");
 	    System.out.println(result);
 		return result;
-	    
+	    */
+		
 	    //end test decompress
-	*/
+	
 	    /* real code
 		byte[] uncompressed = Snappy.uncompress(read_buf);
 		
@@ -216,16 +275,21 @@ public class AWSS3Client {
 
 	
 		final AmazonS3 s3 = AmazonS3ClientBuilder.defaultClient();
-
-		s3.putObject(bucket_name, prefix + "/" + key_name, content);
+		if(prefix!= null)
+			key_name = prefix + "/" + key_name;
+		
+		System.out.printf("put json to s3 bucket=%s, key=%s\n",bucket_name,  key_name);
+		s3.putObject(bucket_name, key_name, content);
 	}
 
 	
 	public List<String> listS3Objects(String s3BucketName, String prefix) {
+		System.out.printf("listS3Objects, bucket=%s, prefix=%s\n",s3BucketName, prefix);
 		final AmazonS3 s3 = AmazonS3ClientBuilder.defaultClient();
 		List<String> s3ObjectsKeys = new ArrayList<String>();
 	
-		ListObjectsV2Request req = new ListObjectsV2Request().withBucketName(s3BucketName).withPrefix(prefix).withDelimiter("/");
+		//ListObjectsV2Request req = new ListObjectsV2Request().withBucketName(s3BucketName).withPrefix(prefix).withDelimiter("/");
+		ListObjectsV2Request req = new ListObjectsV2Request().withBucketName(s3BucketName).withPrefix(prefix);
 		ListObjectsV2Result listing = s3.listObjectsV2(req);
 		for (String commonPrefix : listing.getCommonPrefixes()) {
 		        System.out.println(commonPrefix);
@@ -275,6 +339,8 @@ public class AWSS3Client {
 		}
 	}
 
+	
+	
 	private ObjectNode addNoArchiveHeader(byte [] uncompressedByte) {
 		ObjectNode objectNode =null;
         try {
