@@ -43,6 +43,7 @@ public class S3MapperReducer {
 
 			String loanJson;
 			try {
+				String newKey = inputObjKey;
 				String extention = "";
 				if (inputObjKey.lastIndexOf(".") != -1 && inputObjKey.lastIndexOf(".") != 0) {
 					extention = inputObjKey.substring(inputObjKey.lastIndexOf(".") + 1);
@@ -52,6 +53,10 @@ public class S3MapperReducer {
 					System.out.printf("extention = %s, process snappy file: %s\n", extention, inputObjKey);
 					//loanJson = AWSS3Client.getInstance().getS3ArchiverData(inputBucketName, inputObjKey);
 					loanJson = AWSS3Client.getInstance().getJsonFromS3Snappy(inputBucketName, inputObjKey);
+					
+					newKey = inputObjKey.substring(0, inputObjKey.lastIndexOf(".") );
+					
+					
 				} else {
 					System.out.printf("extention = %s, process json file: %s\n", extention, inputObjKey);
 					loanJson = AWSS3Client.getInstance().readS3ObjectUsingByteArray(inputBucketName, inputObjKey);
@@ -62,7 +67,7 @@ public class S3MapperReducer {
 				System.out.printf("Input key=%s, output path=%s \n The json size=%d, newData size=%d \n", inputObjKey, outputPath, loanJson.length(), newData.length());
 				System.out.println(newData);
 				System.out.println("\n");
-				AWSS3Client.getInstance().putS3Object(outputPath, inputObjKey, newData);
+				AWSS3Client.getInstance().putS3Object(outputPath, newKey, newData);
 				
 				/*
 				 * StringTokenizer st = new StringTokenizer(value.toString());
@@ -138,14 +143,14 @@ public class S3MapperReducer {
 
 		//The above code generate a temp file in s3 bucket:  outputBucketName/temp/s3List.tmp
 		//To test on EMR, run the code as it is.
-		//FileInputFormat.addInputPath(job, new Path("s3://" + outputBucketName + "/" + tempKey));  //run on EMR
-		//FileOutputFormat.setOutputPath(job, new Path("s3://" + outputBucketName + "/output/"));
+		FileInputFormat.addInputPath(job, new Path("s3://" + outputBucketName + "/" + tempKey));  //run on EMR
+		FileOutputFormat.setOutputPath(job, new Path("s3://" + outputBucketName + "/output/"));
 		
 		// To test on local, download the outputBucketName/temp/s3List.tmp to local project directory:
 		//  ../FeatureTransformer/temp/s3List.tmp
 		// and run the following code:
-		FileInputFormat.addInputPath(job, new Path(tempKey ));		//run on local
-		FileOutputFormat.setOutputPath(job, new Path("output"));
+		//FileInputFormat.addInputPath(job, new Path(tempKey ));		//run on local
+		//FileOutputFormat.setOutputPath(job, new Path("output"));
 
 		
 		

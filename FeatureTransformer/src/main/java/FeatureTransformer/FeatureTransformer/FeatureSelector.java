@@ -82,11 +82,11 @@ public class FeatureSelector {
 			//JsonNode locatedNode = rootNode.path("name").path("last");
 					
 			int val =  root.get("BLTV").asInt();
-			mapData.put("BLTV", String.valueOf(root.get("BLTV").asInt()));
-			mapData.put("BaseLoanAmount", String.valueOf(root.get("BaseLoanAmount").asInt()));
-			mapData.put("ClosingCost.ClosingDisclosure1.PPC1EstimatedEscrowAmount",
+			mapData.put("bltv", String.valueOf(root.get("BLTV").asInt()));
+			mapData.put("baseloan_amount", String.valueOf(root.get("BaseLoanAmount").asInt()));
+			mapData.put("estimated_escrow_amount",
 					String.valueOf(root.path("ClosingCost").path("ClosingDisclosure1").get("PPC1EstimatedEscrowAmount").asDouble()));
-			mapData.put("DownPayment",  String.valueOf(root.path("DownPayment").get("Amount")));
+			mapData.put("down_payment",  String.valueOf(root.path("DownPayment").get("Amount")));
 			
 			
 			ObjectMapper mapper = new ObjectMapper();
